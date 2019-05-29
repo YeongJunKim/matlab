@@ -7,7 +7,7 @@ inImage=imread('image/iron_man.jpg');
 inImage=rgb2gray(inImage);
 inImageD=double(inImage);
 
-myinImage=imread('image/dog.jpg');
+myinImage=imread('image/iron_man.jpg');
 myinImageD = double(myinImage);
 
 %sort RGB
