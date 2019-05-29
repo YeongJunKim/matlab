@@ -3,11 +3,11 @@ clear all
 clc
 
 %reading and converting the image
-inImage=imread('iron_man.jpg');
+inImage=imread('image/iron_man.jpg');
 inImage=rgb2gray(inImage);
 inImageD=double(inImage);
 
-myinImage=imread('dog.jpg');
+myinImage=imread('image/dog.jpg');
 myinImageD = double(myinImage);
 
 %sort RGB
