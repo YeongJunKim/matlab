@@ -9,9 +9,6 @@ B = pop;
 
 [U D V] = svd(A);
 
-[genU genD genV] = svd(genA)
-
-gen = U * D * V'
 
 figure(1);
 % pseudo inverse with full SVD
@@ -22,6 +19,8 @@ D_inv(2,2) = 1/D(2,2);
 D_inv(3,3) = 1/D(3,3);
 A_pinv = V*D_inv'*U';
 X = A_pinv*B;
+X
+[2019^2 2019 1]*X
 pop_approx = A*X;
 plot(yr, pop, '*', yr, pop_approx);
 
@@ -33,6 +32,7 @@ D_inv(2,2) = 1/D(2,2);
 D_inv(3,3) = 0;
 A_pinv = V*D_inv'*U';
 X = A_pinv*B;
+X
 pop_approx = A*X;
 plot(yr, pop, '*', yr, pop_approx);
 
@@ -44,5 +44,6 @@ D_inv(2,2) = 0;
 D_inv(3,3) = 0;
 A_pinv = V*D_inv'*U';
 X = A_pinv*B;
+X
 pop_approx = A*X;
  plot(yr, pop, '*', yr, pop_approx);

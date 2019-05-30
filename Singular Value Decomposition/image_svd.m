@@ -35,13 +35,13 @@ numSVals = [];
 dispEr2 = [];
 numSVals2 = [];
     figure;
-for N=101:-5:4
+for N=50:30:60
     % store the singular values in a temporary var
     C = S;
     CR = SR;
     CB = SB;
     CG = SG;
-
+    
     % discard the diagonal values not required for compression
     C(N+1:end,:)=0;
     C(:,N+1:end)=0;
