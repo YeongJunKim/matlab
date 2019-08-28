@@ -38,11 +38,14 @@ function [new_state_values, iteration] = compute_state_value(in_place, discount,
               value = 0;
               for action = 1:data.ACTION_SIZE
                   [next_ij, reward] = step([i,j], action, data);
-                  value = value + data.ACTION_PROB * (reward + discount * state_values(next_ij(1), next_ij(2)))
+                  value = value + data.ACTION_PROB * (reward + discount * state_values(next_ij(1), next_ij(2)));
               end
               new_state_values(i,j) = value;
           end
        end
+       
+       new_state_values
+       
        max_delta_value = max((abs(old_state_values - new_state_values)));
        iteration = iteration + 1;  
        if max_delta_value < 0.001
@@ -63,7 +66,7 @@ end
     x = next_state(1);
     y = next_state(2);
     
-    if x <= 0 || x >= data.WORLD_SIZE || y <= 0 || y >= data.WORLD_SIZE
+    if x <= 0 || x > data.WORLD_SIZE || y <= 0 || y > data.WORLD_SIZE
         next_state = state;
     end
     
@@ -84,6 +87,17 @@ if x == data.WORLD_SIZE && y == data.WORLD_SIZE
     re = 1;
     return
 end
+
+if x == data.WORLD_SIZE && y == 1
+    re = 1;
+    return
+end
+
+if x == 1 && y == data.WORLD_SIZE
+    re = 1;
+    return
+end
+
 re = 0;
 return
 end

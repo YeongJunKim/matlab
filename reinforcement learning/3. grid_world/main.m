@@ -108,7 +108,7 @@ ACTION_DOWN     = [1, 0];
     end
     x = next_state(1);
     y = next_state(2);
-    if x < 0 || x >= WORLD_SIZE || y < 0 || y >= WORLD_SIZE
+    if x <= 0 || x > WORLD_SIZE || y <= 0 || y > WORLD_SIZE
         reward = -1.0;
         next_state = state;
     else
