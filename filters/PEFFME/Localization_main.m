@@ -2,7 +2,7 @@
 clear all
 clc
 
-scenario = 2;
+scenario = 1;
 % 1: Ideal case
 % 2: Kidnapped case
 % 3: Measurement missing case
