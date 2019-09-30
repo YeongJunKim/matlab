@@ -36,7 +36,6 @@ function fct = SETTING(select)
     elseif select == "KF"
         
         fct = @KF_main;
-    end
-        
+    end        
 end
 

@@ -5,8 +5,8 @@ function state_hat = PEFFME(F_array,H_array,y_tilde_array,u_tilde_array,M)
     
     F0 = F_function(F_array,0,1,M);
     
-    L = F0 * inv(transpose(A_big)*A_big) * transpose(A_big)% ½Ä (22)
-    M = -L * B_big + C_big% ½Ä (17)
+    L = F0 * inv(transpose(A_big)*A_big) * transpose(A_big);% ï¿½ï¿½ (22)
+    M = -L * B_big + C_big;% ï¿½ï¿½ (17)
     
     state_hat = L * reshape(y_tilde_array,[],1) + M * reshape(u_tilde_array,[],1);
 end
