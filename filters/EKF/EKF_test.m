@@ -1,19 +1,21 @@
+%% Load measurement data
 clear all
 clc
 
 scenario = 1;
+% 1: Ideal case
+% 2: Kidnapped case
+% 3: Measurement missing case
 
-%% Scenario Selection
 if scenario == 1; load('real_exp_ideal.mat');
 elseif scenario == 2; load('real_exp_kidnap.mat');
 elseif scenario == 3; load('real_exp_missing.mat');
     measurement_data(1:4,71:98) = 0;
-    measurement_data(1:4,234:256) = 0;
+    measurement_data(1:4,234:258) = 0;
 end
 
-num = size(measurement_data, 2);
+num = size(measurement_data,2);
 
-%% Scenario Selection
 if scenario == 1
     num_start = 19;
     num_finish = 319;
@@ -76,7 +78,6 @@ elseif scenario == 3
     end
 end
 
-
 %% Position information of Anchors
 distance = 0.6 * 10;
 x1 = 0; y1 = 0;
@@ -108,15 +109,12 @@ Jacobian_F = matlabFunction(Jacobian_F);
 h = matlabFunction(h);
 Jacobian_H = matlabFunction(Jacobian_H);
 
-
 %% Localization
 i = 1;
 
 x_EKF_data = zeros(3,num);
-x_PEFFME_data = zeros(3,num);
 
 x_hat_EKF = [3 3 0]';
-x_hat_PEFFME = [3 3 0]';
 
 while(1)
     disp(i);
@@ -147,12 +145,15 @@ while(1)
     z = [z1 z2 z3 z4]';
     control = [0.02 0]';
     
+    P = eye(3);
+    Q = blkdiag(0.01,0.01,0.01);
+    R = blkdiag(0.2,0.2,0.2,0.1);
+    
     tic
-    x_hat_PEFFME = PEFFME_main(f, h, Jacobian_F, Jacobian_H, x_hat_PEFFME, z, control, alpha, 10);
-    elapsed_time_PEFFME_data(:,i) = toc;
+    x_hat_EKF = EKF_main(f,h, Jacobian_F,Jacobian_H,x_hat_EKF,z,control, P,Q,R);
+    elapsed_time_EKF_data(:,i) = toc;
         
 	x_EKF_data(:,i) = x_hat_EKF;
-    x_PEFFME_data(:,i) = x_hat_PEFFME;
     
     if i == num
         break;
@@ -160,19 +161,45 @@ while(1)
     i = i+1;
 end
 
+
+
 %% Estimation error analysis
+error_EKF_data = zeros(3,num);
 error_PEFFME_data = zeros(3,num);
 
-for i = iterval_of_interest
-   error_PEFFME_data(:,i) = real_data(:,i) - x_PEFFME_data(:,i); 
+for i = interval_of_interest
+    error_EKF_data(:,i) = real_data(:,i) - x_EKF_data(:,i);
 end
 
-% Position RM
 % Position RMSE
 position_RMSE_EKF = sqrt(mean(error_EKF_data(1,interval_of_interest).^2 + error_EKF_data(2,interval_of_interest).^2));
-position_RMSE_PEFFME = sqrt(mean(error_PEFFME_data(1,interval_of_interest).^2 + error_PEFFME_data(2,interval_of_interest).^2));
 
 % Heading angle RMSE
 angle_RMSE_EKF = sqrt(mean(error_EKF_data(3,interval_of_interest).^2));
-angle_RMSE_PEFFME = sqrt(mean(error_PEFFME_data(3,interval_of_interest).^2));
+
+%% Plot
+figure(3);
+subplot(3,1,1);
+plot(measurement_data(6,interval_of_interest),error_EKF_data(1,interval_of_interest),'*-','color',[0.3 0.3 0.9]); hold on; grid on;
+xlabel('(a)');
+ylabel('Estimation error (m)');
+legend({'EKF','PEFFME (proposed)'},'Location','southeast','NumColumns',2);
+subplot(3,1,2);
+plot(measurement_data(6,interval_of_interest),error_EKF_data(2,interval_of_interest),'*-','color',[0.3 0.3 0.9]); hold on; grid on;
+xlabel('(b)');
+ylabel('Estimation error (m)');
+subplot(3,1,3);
+plot(measurement_data(6,interval_of_interest),error_EKF_data(3,interval_of_interest),'*-','color',[0.3 0.3 0.9]); hold on; grid on;
+xlabel('(c)');
+ylabel('Estimation error (rad)');
+
+figure(4);
+plot(x_EKF_data(1,interval_total),x_EKF_data(2,interval_total),'*-','color',[0.3 0.3 0.9]); hold on; grid on;
+hold on;
+plot(real_data(1,interval_of_interest),real_data(2,interval_of_interest),'xk'); 
+axis equal
+xlim([0 distance]); ylim([0 distance]);
+xlabel('x (m)');
+ylabel('y (m)');
+legend({'EKF','PEFFME (proposed)','Real'},'Location','southeast');
 
