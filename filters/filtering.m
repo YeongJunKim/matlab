@@ -5,6 +5,7 @@ classdef filtering < handle
        filter_type;
        
        f,h,jac_f,jac_h;
+       A, H;
        P, Q, R;
        x_hat = [];
        x_hat_pre = [];
@@ -71,7 +72,11 @@ classdef filtering < handle
                
                obj.time_step = obj.time_step + 1;
            elseif obj.method == "KF"
-               
+                    xp = A*x;
+                    Pp = A*P*A'+Q;
+                    K = Pp*H'*inv(H*Pp*H'+R);
+                    x = xp+K*(z-H*xp);
+                    P = Pp-K*H*Pp;  
                obj.time_step = obj.time_step + 1;
            elseif obj.method == "PEFFME"
                x_hat = obj.filter_type(obj.f, obj.h, obj.jac_f, obj.jac_h, obj.x_hat_pre, z_, u_, alpha_, obj.h_size);
