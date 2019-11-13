@@ -158,6 +158,7 @@ while(1)
     z_sub2_EKF = [x_main_hat_EKF(1:2)' data.measurement_sub2(:,i)']';
     z_sub2_PEFFME = [x_main_hat_PEFFME(1:2)' data.measurement_sub2(:,i)']';
 	
+    
     if data.time_exp < t1
         control = [0.3 0]';
     elseif data.time_exp < t2
