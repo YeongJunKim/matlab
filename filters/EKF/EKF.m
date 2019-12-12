@@ -12,8 +12,12 @@ classdef EKF < handle
        Q;
        R;
        
-       is_init = "no";
+       % data saving
+       count = 1;
+       x_appended;
        
+       is_init = "no";
+       first_run = 0;
    end
    methods
        %% function area
@@ -32,6 +36,7 @@ classdef EKF < handle
            obj.function_jh = function_jh_;
            
            % init ok
+           obj.count = 1;
            obj.is_init = "ok";
            r = obj.is_init;
        end
@@ -51,6 +56,14 @@ classdef EKF < handle
                 obj.P = (eye(x_size) - K*H) * obj.P * (eye(x_size) - K*H)' + K*obj.R*K';
 
                 r = state_hat;
+                
+                
+                if obj.first_run == 0
+                   obj.first_run = 1;
+                   obj.x_appended = zeros(x_size, 1000);
+                end
+                obj.x_appended(:,obj.count) = r;
+                obj.count = obj.count + 1;
            else
                error("you must init class    : Call (filtering_init(obj, ...)");
            end

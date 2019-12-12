@@ -1,4 +1,4 @@
-classdef FIR < handle
+classdef fusion_EKF_FIR < handle
    properties 
        
        % functions
@@ -46,10 +46,6 @@ classdef FIR < handle
        
        is_init = "no";
        
-       % data saving
-       
-       x_appended;
-       
    end
    methods
        %% function area
@@ -74,13 +70,10 @@ classdef FIR < handle
            obj.function_jh = function_jh_;
            
            % count init
-           obj.count = 1;
+           obj.count = 0;
            
            % state init
            obj.init_state = init_state_;
-           
-           % data saving
-           obj.x_appended = zeros(x_size_, 1000);
            
            % init ok
            obj.is_init = "ok";
@@ -113,7 +106,6 @@ classdef FIR < handle
                else
                    r = obj.init_state;
                end
-               obj.x_appended(:,obj.count) = r;
                obj.count = obj.count + 1;
            else
                error("you must init class    : Call (filtering_init(obj, ...)");
