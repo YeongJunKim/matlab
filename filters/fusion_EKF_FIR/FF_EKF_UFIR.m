@@ -1,4 +1,4 @@
-classdef fusion_EKF_FIR < handle
+classdef FF_EKF_UFIR < handle
    properties 
        
        % functions
@@ -12,7 +12,23 @@ classdef fusion_EKF_FIR < handle
        % control input
        u = [];
        % esitimation x
+       x_hat_KF = [];
+       x_hat_UFIR = [];
        x_hat = [];
+       % likelihood
+       likelihood = zeros(2,1);
+       % likelihood weight
+       weight = zeros(2,1);
+       % Markov transition probability matrix
+       markov = zeros(2,2);
+       
+       
+       
+       
+       % P Q R
+       P;
+       Q;
+       R;
        
        % horizon size
        h_size;
@@ -41,22 +57,26 @@ classdef fusion_EKF_FIR < handle
        % u_
        u_;
        
+       
        % counting
        count = 0;
        
        is_init = "no";
        
+       % data saving
+       
+       x_appended;
+       
    end
    methods
        %% function area
-       
-       function r = FIR_init(obj, h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_)
+       function r = FF_EKF_UFIR_init(obj, h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_, P_, Q_, R_)
            % size mapping
            obj.h_size = h_size_;
            obj.x_size = x_size_;
            obj.u_size = u_size_;
            obj.z_size = z_size_;
-           
+
            % array init
            obj.F_array = zeros(x_size_, x_size_, h_size_);
            obj.H_array = zeros(z_size_, x_size_, h_size_);
@@ -69,15 +89,27 @@ classdef fusion_EKF_FIR < handle
            obj.function_jf = function_jf_;
            obj.function_jh = function_jh_;
            
+           % P Q R
+           obj.P = P_;
+           obj.Q = Q_;
+           obj.R = R_;
+           
            % count init
-           obj.count = 0;
+           obj.count = 1;
            
            % state init
            obj.init_state = init_state_;
            
+           % data saving
+           obj.x_appended = zeros(x_size_, 1000);
+           
            % init ok
            obj.is_init = "ok";
            r = obj.is_init;
+       end
+       
+       function r = FF_EKF_UFIR_run(obj, x_pre_, u_, z_)
+           
        end
        
        function r = FIR_run(obj,x_pre_, u_, z_)
@@ -106,6 +138,7 @@ classdef fusion_EKF_FIR < handle
                else
                    r = obj.init_state;
                end
+               obj.x_appended(:,obj.count) = r;
                obj.count = obj.count + 1;
            else
                error("you must init class    : Call (filtering_init(obj, ...)");
@@ -172,7 +205,7 @@ end
 
 
 function state_hat = FIR_main(F_array,H_array,y_tilde_array,u_tilde_array,M)
-    A_big = Big_A(F_array,H_array,M);
+    A_big = Big_A(F_array,H_array,M)
     B_big = Big_B(F_array,H_array,M);
     C_big = Big_C(F_array,M);
     
