@@ -7,10 +7,15 @@ classdef FF_EKF_UFIR < handle
        function_h;
        function_jh; 
        
+       % x_pre_
+       x_pre = [];
        % measurement
        z = [];
        % control input
        u = [];
+       % arguments
+       arguments_f = [];
+       arguments_h = [];
        % esitimation x
        x_hat_KF = [];
        x_hat_UFIR = [];
@@ -21,8 +26,6 @@ classdef FF_EKF_UFIR < handle
        weight = zeros(2,1);
        % Markov transition probability matrix
        markov = zeros(2,2);
-       
-       
        
        
        % P Q R
@@ -40,22 +43,23 @@ classdef FF_EKF_UFIR < handle
        z_size;
         
        % system matrix set
-       F_array;
+       f_tilde;
        % measurement update matrix set
-       H_array;
+       h_tilde;
        % measurement set
        y_tilde;
        % control input set
        u_tilde;
+       % state set
+       x_tilde;
+       % noise set
+       w_tilde;
+       v_tilde;
        
        
        % init state
        init_state;
        
-       % z_
-       z_;
-       % u_
-       u_;
        
        
        % counting
@@ -67,10 +71,13 @@ classdef FF_EKF_UFIR < handle
        
        x_appended;
        
+       x_appended_EKF;
+       x_appended_UFIR;
+       
    end
    methods
        %% function area
-       function r = FF_EKF_UFIR_init(obj, h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_, P_, Q_, R_)
+       function r = FF_EKF_UFIR_init(obj, h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_, P_, Q_, R_, weight_, markov_)
            % size mapping
            obj.h_size = h_size_;
            obj.x_size = x_size_;
@@ -78,8 +85,8 @@ classdef FF_EKF_UFIR < handle
            obj.z_size = z_size_;
 
            % array init
-           obj.F_array = zeros(x_size_, x_size_, h_size_);
-           obj.H_array = zeros(z_size_, x_size_, h_size_);
+           obj.f_tilde = zeros(x_size_, x_size_, h_size_);
+           obj.h_tilde = zeros(z_size_, x_size_, h_size_);
            obj.y_tilde = zeros(z_size_, h_size_);
            obj.u_tilde = zeros(x_size_, h_size_);
            
@@ -93,6 +100,10 @@ classdef FF_EKF_UFIR < handle
            obj.P = P_;
            obj.Q = Q_;
            obj.R = R_;
+           
+           % weight
+           obj.weight = weight_;
+           obj.markov = markov_;
            
            % count init
            obj.count = 1;
@@ -109,171 +120,87 @@ classdef FF_EKF_UFIR < handle
        end
        
        function r = FF_EKF_UFIR_run(obj, x_pre_, u_, z_)
-           
-       end
-       
-       function r = FIR_run(obj,x_pre_, u_, z_)
            if obj.is_init == "ok"
-               argument_f = num2cell([x_pre_' u_']);
-               f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat']);
-               h_hat = obj.function_h(argument_h{:});
+               obj.arguments_f = num2cell([x_pre_' u_']);
+               f_hat = obj.function_f(obj.arguments_f{:});
+               obj.arguments_h = num2cell(f_hat');
+               h_hat = obj.function_h(obj.arguments_h{:});
                
-               F =  obj.function_jf(argument_f{:});
-               H =  obj.function_jh(argument_h{:});
+               F =  obj.function_jf(obj.arguments_f{:});
+               H =  obj.function_jh(obj.arguments_h{:});
                
                % accumulating array
-               obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
-               obj.F_array(:,:,obj.h_size) = F;
-               obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
-               obj.H_array(:,:,obj.h_size) = H;
+               obj.f_tilde(:,:,1:obj.h_size - 1) = obj.f_tilde(:,:,2:obj.h_size);
+               obj.f_tilde(:,:,obj.h_size) = F;
+               obj.h_tilde(:,:,1:obj.h_size-1) = obj.h_tilde(:,:,2:obj.h_size);
+               obj.h_tilde(:,:,obj.h_size) = H;
                obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
                obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
                obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
                obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
+               obj.x_tilde(:,1:obj.h_size-1) = obj.x_tilde(:,2:obj.h_size);
+               obj.x_tilde(:,obj.h_size) = F * x_pre_ + obj.w_tilde;
                
-               % calculate x_hat
+               obj.x_pre = x_pre_;
+               obj.u = u_;
+               obj.z = z_;
+          
+                              
                if obj.count > obj.h_size
-                    r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
+                     r1 = FF_UFIR_main(obj);
+                     r2 = FF_EKF_main(obj);
+                     
                else
-                   r = obj.init_state;
+                     r = FF_EKF_main(obj);
                end
-               obj.x_appended(:,obj.count) = r;
+               
                obj.count = obj.count + 1;
+               
            else
-               error("you must init class    : Call (filtering_init(obj, ...)");
+               error("you must init class    : Call (@@_init(obj, ...)");
            end
        end
-       
-       function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
-           if obj.is_init == "ok"
-               argument_f = num2cell([x_pre_' u_']);
-               f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' u_']);
-               h_hat = obj.function_h(argument_h{:});
-               
-               F =  obj.function_jf(argument_f{:});
-               H =  obj.function_jh(argument_h{:});
-               
-               z = (1 - alpha_) * h_hat + alpha_ * z_;
-               
-               % accumulating array
-               obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
-               obj.F_array(:,:,obj.h_size) = F;
-               obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
-               obj.H_array(:,:,obj.h_size) = H;
-               obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
-               obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
-               obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-               obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
-               
-               % calculate x_hat
-               if obj.count > obj.h_size
-                    r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
-               else
-                   r = obj.init_state;
-               end
-               obj.count = obj.count + 1;
-           else
-               error("you must init class    : Call (filtering_init(obj, ...)");
-           end
-       end
-       
    end
 end
 
 
 
+function r = FF_UFIR_main(obj)
+    x_size = size(x_pre_, 1);
+    state_hat_temp = obj.function_f(obj.arguments_f{:});    % Prediction
+    obj.P = F * obj.P * F' + obj.Q;
+    K = obj.P * H' / (H*obj.P*H' + obj.R);
+    Inno = z_ - obj.function_h(obj.arguments_h{:});  % Innovation
+    state_hat = state_hat_temp + K * Inno;   % Correction
+    obj.P = (eye(x_size) - K*H) * obj.P * (eye(x_size) - K*H)' + K*obj.R*K';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function state_hat = FIR_main(F_array,H_array,y_tilde_array,u_tilde_array,M)
-    A_big = Big_A(F_array,H_array,M)
-    B_big = Big_B(F_array,H_array,M);
-    C_big = Big_C(F_array,M);
+    r = state_hat;
     
-    F0 = F_function(F_array,0,1,M);
-    
-    L = F0 / (A_big' * A_big) * A_big';
-    M = -L * B_big + C_big;
-    
-    state_hat = L * reshape(y_tilde_array,[],1) + M * reshape(u_tilde_array,[],1);
-end
-
-function output = Big_A(F_array,H_array,M)
-    m = size(H_array(:,:,1),1);
-    n = size(H_array(:,:,1),2);
-    
-    output = zeros(M*m,n);
-    
-    for i = 1:M
-        output(m*(i-1)+1:m*i,:) = Gamma_function(F_array,H_array,i,1,1);
+    if obj.first_run == 0
+        obj.first_run = 1;
+        obj.x_appended_EKF = zeros(x_size, 1000);
     end
+    obj.x_appended_EKF(:,obj.count) = r;
 end
 
-function output = Big_B(F_array,H_array,M)
-    m = size(H_array(:,:,1),1);
-    n = size(H_array(:,:,1),2);
-    
-    output = zeros(M*m,M*n);
-    
-    for i = 1:M-1
-        for j = 1:M-1
-            row_interval = m*i+1:m*(i+1);
-            col_interval = n*(j-1)+1:n*j;
-            
-            output(row_interval,col_interval) = Gamma_function(F_array,H_array,i,j,0);
-        end
-    end
+function r = FF_EKF_main(obj)
+
 end
 
-function output = Big_C(F_array,M)
-    n = length(F_array(:,:,1));
-    output = zeros(n,M*n);
-    
-    for i = 1:M
-        output(:,n*(i-1)+1:n*i) = F_function(F_array,i,1,M);
-    end
-end
 
-function output = Gamma_function(F_array,H_array,a,b,c)
-    if a > b
-        F_tmp = F_array(:,:,a-c);
-        for i = 2:a-b
-            F_tmp = F_tmp * F_array(:,:,a+1-c-i);
-        end
-        output = H_array(:,:,a+1-c) * F_tmp;
-    elseif a == b
-        output = H_array(:,:,a+1-c);
-    else
-        output = zeros(size(H_array(:,:,1)));
-    end
-end
 
-function output = F_function(F_array,a,c,M)
-    n = length(F_array(:,:,1));
-    output = eye(n);
-    
-    if a < M
-        for i = 1:M-a
-            output = F_array(:,:,a+1+i-c) * output;
-        end
-    end
-end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
