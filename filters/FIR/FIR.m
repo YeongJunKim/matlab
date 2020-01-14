@@ -180,7 +180,7 @@ end
 
 
 function state_hat = FIR_main(F_array,H_array,y_tilde_array,u_tilde_array,M)
-    A_big = Big_A(F_array,H_array,M)
+    A_big = Big_A(F_array,H_array,M);
     B_big = Big_B(F_array,H_array,M);
     C_big = Big_C(F_array,M);
     
