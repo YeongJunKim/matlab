@@ -122,16 +122,19 @@ classdef FIR < handle
        
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
+%                disp("FIR_PEFFME_0");
                argument_f = num2cell([x_pre_' u_']);
                f_hat = obj.function_f(argument_f{:});
                argument_h = num2cell([f_hat' u_']);
                h_hat = obj.function_h(argument_h{:});
+%                disp("FIR_PEFFME_1");
                
                F =  obj.function_jf(argument_f{:});
                H =  obj.function_jh(argument_h{:});
                
                z = (1 - alpha_) * h_hat + alpha_ * z_;
                
+%                disp("FIR_PEFFME_3");
                % accumulating array
                obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
                obj.F_array(:,:,obj.h_size) = F;

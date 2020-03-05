@@ -1,5 +1,6 @@
 classdef EKF < handle
    properties 
+       
        % functions
        function_f;
        function_jf;
