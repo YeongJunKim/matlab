@@ -68,14 +68,6 @@ classdef PF < handle
         function r = PF_run(obj, u_, z_)
             if obj.is_init == "ok"
                 obj.count = obj.count + 1;
-                %% test
-%                 obj.particles(:,1,1) = obj.x_appended(:,1);
-%                 arguments1 = num2cell([obj.particles(:,1,obj.count-1)' u_']);
-%                 xk = obj.function_f(arguments1{:});
-%                 obj.particles(:,1,obj.count) = xk;
-%                 obj.x_appended(:,obj.count) = xk;
-%                 r = xk;
-%                 arguments2 = num2cell([xk' u_']);
                 %% run
                 xk = zeros(size(obj.particles, 1), size(obj.particles, 2));
                 wk = zeros(obj.ns, 1);
@@ -86,7 +78,7 @@ classdef PF < handle
                 for i = 1:obj.ns
                     arguments1 = num2cell([xkm1(:,i)' u_']);
                     xk(:, i) = obj.function_f(arguments1{:});
-                    arguments2 = num2cell([xkm1(:,i)' u_']);
+                    arguments2 = num2cell([xk(:,i)' u_']);
                     yk = obj.function_h(arguments2{:});
                     for j = 1:size(yk,1)
                        yk(j) =  yk(j) +  normrnd(0, sqrt(obj.R(j,j)));
@@ -94,10 +86,10 @@ classdef PF < handle
 %                     wk(i) = wkm1(i) / ((z_ - yk)' * (z_ - yk));
                     wk(i) = wkm1(i) * (normpdf((z_ - yk), 0, sqrt(1)))'*(normpdf((z_ - yk), 0, sqrt(1)));
                 end
-                wk = wk./sum(wk.^2);
-                Neff = 1/sum(wk);
-                percentage = 0.5;
-                Nt = percentage;% * obj.ns;
+                wk = wk./sum(wk);
+                Neff = 1/sum(wk.^2);
+                percentage = 0.7;
+                Nt = percentage * obj.ns;
                 
                 if(Neff < Nt)
                     fprintf("Resampling Neff = %f, Nt = %f \n", Neff, Nt);
