@@ -159,9 +159,9 @@ while(1)
     z_sub2_PEFFME = [x_main_hat_PEFFME(1:2)' data.measurement_sub2(:,i)']';
 	
     
-    if data.time_exp < t1
+    if data.time_exp(i) < t1
         control = [0.3 0]';
-    elseif data.time_exp < t2
+    elseif data.time_exp(i) < t2
         control = [0 -pi/10]';
     else
         control = [0.3 0]';

@@ -141,6 +141,10 @@ classdef FIR < handle
                obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
                obj.H_array(:,:,obj.h_size) = H;
                obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+               z
+               h_hat
+               H
+               f_hat
                obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
                obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
                obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
