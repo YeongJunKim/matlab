@@ -30,7 +30,7 @@ classdef PF < handle
     methods
         %% function area
         
-        function r = PF_init(obj, ns_, init_state_, appended_num_, Q_, R_, function_f_, function_h_)
+        function r = PF_init(obj, ns_, init_state_, appended_num_, P_, Q_, R_, function_f_, function_h_)
             %             obj.fig = figure(100);
             
             % matrix init
@@ -51,7 +51,7 @@ classdef PF < handle
             obj.particles = zeros(size(init_state_, 1), obj.ns, appended_num_);
             for i = 1:obj.ns
                 for j = 1:size(init_state_, 1)
-                    obj.particles(j,i,1) = obj.x_appended(j,1) + normrnd(0, sqrt(Q_(j,j)));
+                    obj.particles(j,i,1) = obj.x_appended(j,1) + normrnd(0, (Q_(j,j)));
                 end
             end
             
@@ -105,48 +105,6 @@ classdef PF < handle
                 
                 obj.x_appended(:,obj.count) = xhk;
                 r = xhk;
-                
-                
-                %                 obj.count = obj.count + 1;
-                %                 xk = zeros(size(obj.particles, 1), size(obj.particles, 2));
-                %                 wk = zeros(obj.ns,1);
-                %                 wk_ = zeros(obj.ns,1);
-                %                 for i = 1:obj.ns
-                %                     arguments = num2cell([obj.particles(:,i,obj.count-1)' u_']');
-                %                     disp(arguments)
-                %                     xk(:,i) = obj.function_f(arguments{:});
-                %
-                %                     arguments = num2cell([xk(:,i)' u_']');
-                %                     yk = obj.function_h(arguments{:});
-                %
-                %                     w_ = obj.w(i,obj.count-1) * (z_ - yk);
-                %                     wk_(i) = w_' * w_;
-                %                 end
-                %
-                %                 %% Normalizae weight vector
-                %                 wk = wk_./sum(wk_.^2);
-                %                 %% Calculate effective sample size
-                %                 Neff = 1/sum(wk);
-                %                 %% Resampling
-                %                 resample_percentageg = 0.2;
-                %                 Nt = resample_percentageg * obj.ns;
-                %
-                %                 if Neff < Nt
-                %                    disp('Resampling ...')
-                %                    [xk, wk] = resample(xk, wk, obj.resampling_strategy);
-                %                 end
-                %                 %% Compute estimated state
-                %                 xhk = zeros(size(xk,1), 1);
-                %                 for i = 1 : obj.ns
-                %                    xhk = xhk + wk(i) * xk(:,i);
-                %                 end
-                %
-                %                 obj.w(:,obj.count) = wk;
-                %                 obj.particles(:,:,obj.count) = xk;
-                %
-                %                 obj.x_appended(:,obj.count) = xhk;
-                %                 r = xk(:,1);
-                %                 draw(obj)
             else
                 error("you must init class    : Call (PF_init(obj, ...)");
             end
