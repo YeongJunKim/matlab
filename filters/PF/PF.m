@@ -4,6 +4,9 @@ classdef PF < handle
         function_f;
         function_h;
         
+        % particles random point
+        P;
+        
         % error matrix
         Q;
         R;
@@ -28,10 +31,25 @@ classdef PF < handle
         %         resampling_strategy = 'systematic_resampling';
     end
     methods
-        %% function area
+        %% PF init
+        % parameter
+        % obj               = PF class
+        % ns_               = number of particles
+        % init_states_      = init state
+        % appended_num_     = size of storing data 
+        % P_                = random factor of initial particles
+        % Q_ ,R_            = noise covariance
+        % function_f_       = system function
+        % function_h_       = observation function
+        % strategy_         = resampling method
         
-        function r = PF_init(obj, ns_, init_state_, appended_num_, P_, Q_, R_, function_f_, function_h_)
-            %             obj.fig = figure(100);
+        function r = PF_init(obj, ns_, init_state_, appended_num_, P_, Q_, R_, function_f_, function_h_, strategy_)
+            
+            % resampling strategy
+            obj.resampling_strategy = strategy_;
+            
+            % particles random noise
+            obj.P = P_;
             
             % matrix init
             obj.Q = Q_;
@@ -51,7 +69,7 @@ classdef PF < handle
             obj.particles = zeros(size(init_state_, 1), obj.ns, appended_num_);
             for i = 1:obj.ns
                 for j = 1:size(init_state_, 1)
-                    obj.particles(j,i,1) = obj.x_appended(j,1) + normrnd(0, (Q_(j,j)));
+                    obj.particles(j,i,1) = obj.x_appended(j,1) + normrnd(0, (P_(j,j)));
                 end
             end
             
@@ -65,6 +83,10 @@ classdef PF < handle
             r = obj.is_init;
         end
         
+        %% PF run
+        % obj = PF class
+        % u_  = input
+        % z_  = measurement
         function r = PF_run(obj, u_, z_)
             if obj.is_init == "ok"
                 obj.count = obj.count + 1;
@@ -72,18 +94,16 @@ classdef PF < handle
                 xk = zeros(size(obj.particles, 1), size(obj.particles, 2));
                 wk = zeros(obj.ns, 1);
                 
+                
                 xkm1 = obj.particles(:,:,obj.count-1);
                 wkm1 = obj.w(:,obj.count-1);
                 
                 for i = 1:obj.ns
                     arguments1 = num2cell([xkm1(:,i)' u_']);
-                    xk(:, i) = obj.function_f(arguments1{:});
+                    xk(:, i) = obj.function_f(arguments1{:}) + diag(normrnd(0,obj.Q));
                     arguments2 = num2cell([xk(:,i)' u_']);
                     yk = obj.function_h(arguments2{:});
-                    for j = 1:size(yk,1)
-                       yk(j) =  yk(j) +  normrnd(0, sqrt(obj.R(j,j)));
-                    end
-%                     wk(i) = wkm1(i) / ((z_ - yk)' * (z_ - yk));
+                    yk = yk + diag(normrnd(0, obj.R));
                     wk(i) = wkm1(i) * (normpdf((z_ - yk), 0, sqrt(1)))'*(normpdf((z_ - yk), 0, sqrt(1)));
                 end
                 wk = wk./sum(wk);
