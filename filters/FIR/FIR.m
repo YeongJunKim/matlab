@@ -149,7 +149,7 @@ classdef FIR < handle
                if obj.count > obj.h_size
                     r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
                else
-                   r = obj.init_state;
+                   r = f_hat;
                end
                obj.count = obj.count + 1;
            else
