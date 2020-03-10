@@ -45,7 +45,7 @@ x_main_PF_init = [3 18 0]';
 x_main_PF_data(:,1) = x_main_PF_init;
 
 
-samples = 100;
+samples = 200;
 appended_num = 1000;
 P = blkdiag(0.01, 0.01, 0.01);
 Q = blkdiag(0.01, 0.01, 0.01);
@@ -92,19 +92,7 @@ while(1)
         control = [0.3 0]';
     end
     
-    
     x_main_PF_data(:,i) = PF_run(PF_FILTER, control, z_main);
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     i = i + 1;
     if i == num
