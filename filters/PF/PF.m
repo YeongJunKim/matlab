@@ -39,7 +39,7 @@ classdef PF < handle
         % appended_num_     = size of storing data 
         % P_                = random factor of initial particles
         % Q_ ,R_            = noise covariance
-        % function_f_       = system function
+        % function_f_       = system process function
         % function_h_       = observation function
         % strategy_         = resampling method
         

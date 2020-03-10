@@ -4,9 +4,6 @@ clc
 
 
 %% add path & data
-addpath('../EKF');
-addpath('../FIR');
-addpath('../TEMP');
 addpath('../sample data');
 load('190503_multirobot_data.mat');
 num = size(data.time_exp,2);
@@ -42,25 +39,19 @@ h_main.dist4(x,y,theta,v_l,v_theta) = sqrt((x-x4)^2 + (y-y4)^2);
 h_main.theta(x,y,theta,v_l,v_theta) = theta;
 h_main = [h_main.dist1 h_main.dist2 h_main.dist3 h_main.dist4 h_main.theta]';
 h_main = matlabFunction(h_main);
-% % process noise
-% sigma_u = sqrt(10);
-% p_sys_noise   = @(u) normpdf(u, 0, sigma_u);
-% gen_sys_noise = @(u) normrnd(0, sigma_u);         
-% % observation noise
-% sigma_v = sqrt(1);
-% p_obs_noise = @(v) normpdf(v, 0, sigma_v);
-% gen_obs_noise = @(v) normrnd(0, sigma_v);
 %% init data
 x_main_PF_data = zeros(3,num);
 x_main_PF_init = [3 18 0]';
+x_main_PF_data(:,1) = x_main_PF_init;
 
-ns = 25;
 
-P = eye(3);
-Q = blkdiag(0.1,0.1,0.1);
-R = blkdiag(0.2,0.2,0.2,0.2,0.1);
+samples = 100;
+appended_num = 1000;
+P = blkdiag(0.01, 0.01, 0.01);
+Q = blkdiag(0.01, 0.01, 0.01);
+R = blkdiag(0.2, 0.2, 0.2, 0.2, 0.1);
+resampling_strategy = 'multinomial_resampling';
 
-i = 1;
 
 t0 = 0;
 t1 = t0 + 30;
@@ -70,15 +61,14 @@ t3 = t2 + 30;
 %% filter init
 PF_FILTER = PF;
 
-PF_init(PF_FILTER, ns, x_main_PF_init, 1000, P, Q, R, f_main, h_main);
+PF_init(PF_FILTER, samples, x_main_PF_data(:,1), appended_num, P, Q, R, f_main, h_main, resampling_strategy);
 
+% start from i = 2 
+% because init states are stored above "PF_init" function.
+i = 2;
 while(1)
-    i = i + 1;
     disp(i);
     
-    if i == num
-        break;
-    end
     
     d1 = data.measurement_main(1,i);
     d2 = data.measurement_main(2,i);
@@ -103,7 +93,7 @@ while(1)
     end
     
     
-    x_main_PF_data(:,i) = PF_run(PF_FILTER, x_main_PF_data(:,i-1), control, z_main);
+    x_main_PF_data(:,i) = PF_run(PF_FILTER, control, z_main);
     
     
     
@@ -116,9 +106,10 @@ while(1)
     
     
     
-    
-    
-    
+    i = i + 1;
+    if i == num
+        break;
+    end
 end
     
 interval_of_interest = 1:num-1;
