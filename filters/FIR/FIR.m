@@ -13,6 +13,7 @@ classdef FIR < handle
        u = [];
        % esitimation x
        x_hat = [];
+       x_pre = [];
        
        % horizon size
        h_size;
@@ -78,6 +79,7 @@ classdef FIR < handle
            
            % state init
            obj.init_state = init_state_;
+           obj.x_pre = init_state_;
            
            % data saving
            obj.x_appended = zeros(x_size_, 1000);
@@ -122,35 +124,45 @@ classdef FIR < handle
        
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
-%                disp("FIR_PEFFME_0");
-               argument_f = num2cell([x_pre_' u_']);
+%                 disp("FIR_PEFFME_0");
+               argument_f = num2cell([obj.x_pre' u_']);
                f_hat = obj.function_f(argument_f{:});
                argument_h = num2cell([f_hat' u_']);
                h_hat = obj.function_h(argument_h{:});
-%                disp("FIR_PEFFME_1");
+%                 disp("FIR_PEFFME_1");
                
                F =  obj.function_jf(argument_f{:});
                H =  obj.function_jh(argument_h{:});
-               
                z = (1 - alpha_) * h_hat + alpha_ * z_;
                
-%                disp("FIR_PEFFME_3");
+%                 disp("FIR_PEFFME_3");
                % accumulating array
+%                 disp("1");
                obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
+%                 disp("2");
                obj.F_array(:,:,obj.h_size) = F;
+%                 disp("3");
                obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
+%                 disp("4");
                obj.H_array(:,:,obj.h_size) = H;
+%                 disp("5");
                obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+%                 disp("6");
                obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
+%                 disp("7");
                obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-               obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
-               
+%                 disp("8");
+               obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
+%                 disp("9");
+              
                % calculate x_hat
                if obj.count > obj.h_size
                     r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
                else
                    r = f_hat;
                end
+               obj.x_pre = r;
+               obj.x_appended(:,obj.count) = r;
                obj.count = obj.count + 1;
            else
                error("you must init class    : Call (filtering_init(obj, ...)");
