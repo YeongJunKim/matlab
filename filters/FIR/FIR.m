@@ -124,36 +124,35 @@ classdef FIR < handle
        
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
-%                 disp("FIR_PEFFME_0");
-               argument_f = num2cell([obj.x_pre' u_']);
-               f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' u_']);
-               h_hat = obj.function_h(argument_h{:});
-%                 disp("FIR_PEFFME_1");
+               disp("debug");
+               disp(obj.x_pre);
+               argument_f = num2cell([obj.x_pre' u_'])
+               f_hat = obj.function_f(argument_f{:})
+               argument_h = num2cell([f_hat' u_'])
+               h_hat = obj.function_h(argument_h{:})
                
-               F =  obj.function_jf(argument_f{:});
-               H =  obj.function_jh(argument_h{:});
-               z = (1 - alpha_) * h_hat + alpha_ * z_;
+               F =  obj.function_jf(argument_f{:})
+               H =  obj.function_jh(argument_h{:})
+               z = (1 - alpha_) * h_hat + alpha_ * z_
                
-%                 disp("FIR_PEFFME_3");
                % accumulating array
-%                 disp("1");
+%                  disp("1");
                obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
-%                 disp("2");
+%                  disp("2");
                obj.F_array(:,:,obj.h_size) = F;
-%                 disp("3");
+%                  disp("3");
                obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
-%                 disp("4");
+%                  disp("4");
                obj.H_array(:,:,obj.h_size) = H;
-%                 disp("5");
+%                  disp("5");
                obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
-%                 disp("6");
+%                  disp("6");
                obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
-%                 disp("7");
+%                  disp("7");
                obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-%                 disp("8");
+%                  disp("8");
                obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
-%                 disp("9");
+%                  disp("9");
               
                % calculate x_hat
                if obj.count > obj.h_size
