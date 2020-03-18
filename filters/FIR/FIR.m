@@ -124,16 +124,16 @@ classdef FIR < handle
        
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
-               disp("debug");
-               disp(obj.x_pre);
-               argument_f = num2cell([obj.x_pre' u_'])
-               f_hat = obj.function_f(argument_f{:})
-               argument_h = num2cell([f_hat' u_'])
-               h_hat = obj.function_h(argument_h{:})
+%                disp("debug");
+%                disp(obj.x_pre);
+               argument_f = num2cell([obj.x_pre' u_']);
+               f_hat = obj.function_f(argument_f{:});
+               argument_h = num2cell([f_hat' u_']);
+               h_hat = obj.function_h(argument_h{:});
                
-               F =  obj.function_jf(argument_f{:})
-               H =  obj.function_jh(argument_h{:})
-               z = (1 - alpha_) * h_hat + alpha_ * z_
+               F =  obj.function_jf(argument_f{:});
+               H =  obj.function_jh(argument_h{:});
+               z = (1 - alpha_) * h_hat + alpha_ * z_;
                
                % accumulating array
 %                  disp("1");
@@ -202,6 +202,8 @@ function state_hat = FIR_main(F_array,H_array,y_tilde_array,u_tilde_array,M)
     
     L = F0 / (A_big' * A_big) * A_big';
     M = -L * B_big + C_big;
+    
+   
     
     state_hat = L * reshape(y_tilde_array,[],1) + M * reshape(u_tilde_array,[],1);
 end
