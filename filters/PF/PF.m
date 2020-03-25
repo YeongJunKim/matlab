@@ -104,11 +104,12 @@ classdef PF < handle
                     arguments2 = num2cell([xk(:,i)' u_']);
                     yk = obj.function_h(arguments2{:});
                     yk = yk + diag(normrnd(0, obj.R));
-                    wk(i) = wkm1(i) * (normpdf((z_ - yk), 0, sqrt(1)))'*(normpdf((z_ - yk), 0, sqrt(1)));
+                    wk(i) = wkm1(i) * (normpdf((z_ - yk), 0, sqrt(0.01)))'*(normpdf((z_ - yk), 0, sqrt(0.01)));
+                    wk(i) = wkm1(i) * (z_ - yk)'*(z_ - yk);
                 end
                 wk = wk./sum(wk);
                 Neff = 1/sum(wk.^2);
-                percentage = 0.7;
+                percentage = 0.5;
                 Nt = percentage * obj.ns;
                 
                 if(Neff < Nt)
