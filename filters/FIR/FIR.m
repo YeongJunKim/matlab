@@ -122,13 +122,51 @@ classdef FIR < handle
            end
        end
        
+       function r = FIR_DFIR_run(obj, u_, z_, pj_, alpha_)
+           if obj.is_init == "ok"
+%                disp("debug");
+%                disp(obj.x_pre);
+
+               argument_f = num2cell([obj.x_pre' u_']);
+               f_hat = obj.function_f(argument_f{:});
+               argument_h = num2cell([f_hat' pj_']);
+               h_hat = obj.function_h(argument_h{:});
+               
+               F =  obj.function_jf(argument_f{:});
+               H =  obj.function_jh(argument_h{:});
+               z = (1 - alpha_) * h_hat + alpha_ * z_;
+               
+               % accumulating array
+               obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
+               obj.F_array(:,:,obj.h_size) = F;
+               obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
+               obj.H_array(:,:,obj.h_size) = H;
+               obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+               obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
+               obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
+               obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
+              
+               % calculate x_hat
+               if obj.count > obj.h_size
+                    r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
+               else
+                   r = f_hat;
+               end
+               obj.x_pre = r;
+               obj.x_appended(:,obj.count) = r;
+               obj.count = obj.count + 1;
+           else
+               error("you must init class    : Call (filtering_init(obj, ...)");
+           end
+       end
+       
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
 %                disp("debug");
 %                disp(obj.x_pre);
-               argument_f = num2cell([obj.x_pre' u_']);
+               argument_f = num2cell([obj.x_pre' u_'])
                f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' u_']);
+               argument_h = num2cell([f_hat' u_'])
                h_hat = obj.function_h(argument_h{:});
                
                F =  obj.function_jf(argument_f{:});
