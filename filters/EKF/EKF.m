@@ -49,10 +49,34 @@ classdef EKF < handle
            r = obj.is_init;
        end
        
-       function r = EKF_run(obj,x_pre_, u_, z_)
+       function r = EKF_DFIR_run(obj,u_,z_,pj_)
            if obj.is_init == "ok"
                 x_size = size(obj.x_pre, 1);
                 arguments = num2cell([obj.x_pre' u_']);
+                arguments_h = num2cell([obj.x_pre' pj_'])
+                F = obj.function_jf(arguments{:});
+                H = obj.function_jh(arguments_h{:});
+                
+                state_hat_temp = obj.function_f(arguments{:});    % Prediction
+                obj.P = F * obj.P * F' + obj.Q;
+                K = obj.P * H' / (H*obj.P*H' + obj.R);
+                Inno = z_ - obj.function_h(arguments_h{:});  % Innovation
+                state_hat = state_hat_temp + K * Inno;   % Correction
+                obj.P = (eye(x_size) - K*H) * obj.P * (eye(x_size) - K*H)' + K*obj.R*K';
+
+                r = state_hat;
+                obj.x_appended(:,obj.count) = r;
+                obj.x_pre = r;
+                obj.count = obj.count + 1;
+           else
+               error("you must init class    : Call (filtering_init(obj, ...)");
+           end
+       end
+       
+       function r = EKF_run(obj,x_pre_, u_, z_)
+           if obj.is_init == "ok"
+                x_size = size(obj.x_pre, 1);
+                arguments = num2cell([obj.x_pre' u_'])
                 F = obj.function_jf(arguments{:});
                 H = obj.function_jh(arguments{:});
                 
