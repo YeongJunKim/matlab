@@ -53,17 +53,23 @@ classdef EKF < handle
            if obj.is_init == "ok"
                 x_size = size(obj.x_pre, 1);
                 arguments = num2cell([obj.x_pre' u_']);
-                arguments_h = num2cell([obj.x_pre' pj_'])
+                arguments_h = num2cell([obj.x_pre' pj_']);
                 F = obj.function_jf(arguments{:});
                 H = obj.function_jh(arguments_h{:});
                 
                 state_hat_temp = obj.function_f(arguments{:});    % Prediction
                 obj.P = F * obj.P * F' + obj.Q;
                 K = obj.P * H' / (H*obj.P*H' + obj.R);
-                Inno = z_ - obj.function_h(arguments_h{:});  % Innovation
+                
+                % There is a matlab problem with [-Pi, Pi], so need to be
+                % convert radian value go to [0, 2Pi].
+                temp = obj.function_h(arguments_h{:});
+                temp(3:4) = wrapTo2Pi(temp(3:4));
+                
+                Inno = z_ - temp;  % Innovation
                 state_hat = state_hat_temp + K * Inno;   % Correction
                 obj.P = (eye(x_size) - K*H) * obj.P * (eye(x_size) - K*H)' + K*obj.R*K';
-
+             
                 r = state_hat;
                 obj.x_appended(:,obj.count) = r;
                 obj.x_pre = r;

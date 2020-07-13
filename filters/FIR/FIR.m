@@ -131,6 +131,9 @@ classdef FIR < handle
                f_hat = obj.function_f(argument_f{:});
                argument_h = num2cell([f_hat' pj_']);
                h_hat = obj.function_h(argument_h{:});
+               % There is a matlab problem with [-Pi, Pi], so need to be
+               % convert radian value go to [0, 2Pi].
+               h_hat(3:4) = wrapTo2Pi(h_hat(3:4));
                
                F =  obj.function_jf(argument_f{:});
                H =  obj.function_jh(argument_h{:});

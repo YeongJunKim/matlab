@@ -82,7 +82,54 @@ classdef PF < handle
             obj.is_init = "ok";
             r = obj.is_init;
         end
-        
+         %% DFIR PF run
+        % obj = PF class
+        % u_  = input
+        % z_  = measurement
+        % pj_ = neighbor's position
+        function r = PF_DFIR_run(obj, u_, z_, pj_)
+            if obj.is_init == "ok"
+                obj.count = obj.count + 1;
+                %% run
+                xk = zeros(size(obj.particles, 1), size(obj.particles, 2));
+                wk = zeros(obj.ns, 1);
+                
+                
+                xkm1 = obj.particles(:,:,obj.count-1);
+                wkm1 = obj.w(:,obj.count-1);
+                
+                for i = 1:obj.ns
+                    arguments1 = num2cell([xkm1(:,i)' u_']);
+                    xk(:, i) = obj.function_f(arguments1{:}) + diag(normrnd(0,obj.Q));
+                    arguments2 = num2cell([xk(:,i)' pj_']);
+                    yk = obj.function_h(arguments2{:});
+                    yk = yk + diag(normrnd(0, obj.R));
+                    wk(i) = wkm1(i) * (normpdf((z_ - yk), 0, sqrt(0.01)))'*(normpdf((z_ - yk), 0, sqrt(0.01)));
+%                     wk(i) = wkm1(i) * (z_ - yk)'*(z_ - yk);
+                end
+                wk = wk./sum(wk);
+                Neff = 1/sum(wk.^2);
+                percentage = 0.5;
+                Nt = percentage * obj.ns;
+                
+                if(Neff < Nt)
+                    fprintf("Resampling Neff = %f, Nt = %f \n", Neff, Nt);
+                    [xk, wk] = resample(xk, wk, obj.resampling_strategy);
+                end
+                %% Compute estimated state
+                xhk = zeros(size(xk,1), 1);
+                for i = 1 : obj.ns
+                    xhk = xhk + wk(i) * xk(:,i);
+                end
+                obj.w(:,obj.count) = wk;
+                obj.particles(:,:,obj.count) = xk;
+                
+                obj.x_appended(:,obj.count) = xhk;
+                r = xhk;
+            else
+                error("you must init class    : Call (PF_init(obj, ...)");
+            end
+        end
         %% PF run
         % obj = PF class
         % u_  = input
@@ -130,6 +177,21 @@ classdef PF < handle
                 error("you must init class    : Call (PF_init(obj, ...)");
             end
         end
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         function r = draw(obj)
             figure(1);
             for i = 1:obj.ns
