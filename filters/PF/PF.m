@@ -113,7 +113,7 @@ classdef PF < handle
                 Nt = percentage * obj.ns;
                 
                 if(Neff < Nt)
-                    fprintf("Resampling Neff = %f, Nt = %f \n", Neff, Nt);
+%                     fprintf("Resampling Neff = %f, Nt = %f \n", Neff, Nt);
                     [xk, wk] = resample(xk, wk, obj.resampling_strategy);
                 end
                 %% Compute estimated state

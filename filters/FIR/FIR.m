@@ -167,9 +167,9 @@ classdef FIR < handle
            if obj.is_init == "ok"
 %                disp("debug");
 %                disp(obj.x_pre);
-               argument_f = num2cell([obj.x_pre' u_'])
+               argument_f = num2cell([obj.x_pre' u_']);
                f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' u_'])
+               argument_h = num2cell([f_hat' u_']);
                h_hat = obj.function_h(argument_h{:});
                
                F =  obj.function_jf(argument_f{:});
