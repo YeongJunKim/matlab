@@ -61,11 +61,11 @@ classdef PF < handle
             
             obj.ns = ns_;
             
-            disp("init saved datas");
+%             disp("init saved datas");
             obj.x_appended = zeros(size(init_state_, 1), appended_num_);
             obj.x_appended(:,1) = init_state_;
             
-            disp("init particles");
+%             disp("init particles");
             obj.particles = zeros(size(init_state_, 1), obj.ns, appended_num_);
             for i = 1:obj.ns
                 for j = 1:size(init_state_, 1)
@@ -73,11 +73,11 @@ classdef PF < handle
                 end
             end
             
-            disp("init weights");
+%             disp("init weights");
             obj.w = zeros(obj.ns, appended_num_);
             obj.w(:,1) = repmat(1/obj.ns, obj.ns, 1);
             
-            disp("init ok");
+%             disp("init ok");
             obj.count = 1;
             obj.is_init = "ok";
             r = obj.is_init;
