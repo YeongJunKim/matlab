@@ -162,7 +162,7 @@ classdef FIR < handle
                error("you must init class    : Call (filtering_init(obj, ...)");
            end
        end
-       
+       % rename FIR_REDEFINE_run(obj, u_, z_, alpha_)
        function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
            if obj.is_init == "ok"
 %                disp("debug");
