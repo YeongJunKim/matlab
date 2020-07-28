@@ -1,76 +1,179 @@
+% paper: Distributed Kalman filter for cooperative localization with integrated measurements
+% author: Yeong Jun Kim(colson)
+% email: colson@korea.ac.kr
+% date: 2020-07-28
+% There are two algorithm, one is the algorithm1 and other is algorithm2.
+% Each algorithm weighted more in absoluted measurement or relative measurement.
+% So I will implement these two algorithm in one class function.
+% Moreover this class is fitted in linear system.
+
 classdef DKFCL < handle
-   properties 
-       
-       % algorithm type
-       algorithm_num
-       
-       % functions
-       function_f;
-       function_jf;
-       function_h;
-       function_jh; 
-       
-       A;
-       B;
-       C;
-       D;
-       
-       % covariance matrix
-       P;
-       % error matrix
-       Q;
-       R;
-       
-       % data saving
-       count = 1;
-       x_appended;
-       x_pre;
-       
-       is_init = "no";
-       filtering_type = "";
-       first_run = 0;
-   end
-   methods
-       %% function area
-       function obj = DKFCL(P_, Q_, R_, A_, B_, C_, D_, init_, algorithm_num_)
-           obj.algorithm_num = algorithm_num_;
-           obj.P = P_;
-           obj.Q = Q_;
-           obj.R = R_;
-           obj.A = A_;
-           obj.B = B_;
-           obj.C = C_;
-           obj.D = D_;
-           obj.x_appended = zeros(size(init_,1), []);
-           obj.x_appended(:,1) = init_(:);
-           obj.x_pre = init_;
-           obj.count = 2;
-           if(obj.algorithm_num ~= 1 && obj.algorithm_num ~= 2)
-               error("Algorithm number can be the number as 1 or 2.");
-           end
-           obj.is_init = "ok";
-       end
-             
-       function r = DKFCL_run(obj, u_, y_, z_)
-           % paper title: Distributed Kalman filter for cooperative localization with integrated measurements
-           % There are two algorithm: algorithm 1 focused on absoluted measurement is more important than relative measurement, algorithm 2 is versa.
-           % u_ control input
-           % y_ absolute measurement
-           % z_ relative measurement
-          if obj.is_init == "ok"
-              % algorithm 1
-              
-              
-              % algorithm 2
-              
-              
-              obj.filtering_type = "DEKFCL";
-          else
-               error("you must init class    : Call (filtering_init(obj, ...)");
-          end
-       end
-       
-   end
+    properties
+        % algorithm type
+        algorithm_num
+        % system matrix Ax + Bw
+        A;
+        B;
+        
+        C; % absolute measurement matrix Cx + v
+        D; % relative measurement matrix D(x_diff) + r
+        w; %
+        v; %
+        a; % adjacency? or weight?
+        P; % covariance matrix
+        Q; % error matrix
+        V; % error matrix
+        R; % error matrix
+        % data saving
+        x_appended;
+        ns; % neighbor size
+        rn; % now robot num
+        nx; % state size
+        x_pre;
+        % The count variable are started from =2, beacause count==1 is for
+        % initialized state value
+        count = 1;
+        % initialized confirm
+        is_init = "no";
+        % inner debuging
+        y
+        z
+        x_neigh
+    end
+    methods
+        %% function area
+        function obj = DKFCL(P_, Q_, V_, R_, A_, B_, C_, D_,  a_, init_, algorithm_num_, robot_num_)
+            % argument
+            % P_ initial cov
+            % Q_ w cov
+            % V_ y cov
+            % R_ r cov
+            % A B C D system, measurement matrix
+            % a_ adjacency weighted graph
+            % init_ initial state x
+            % algorithm_num_ can be binary 0 or 1
+            % robot_num_ agent i robot
+            if nargin == 0
+                error("No params error. Initialized the class with (P,Q,R,A,B,C,D,init,algorithm_num)");
+            else
+                
+                
+                % Algorithm 1 and 2 are saved in class but $FILTER$_run function
+                % return specific algorithm's output.
+                
+                obj.algorithm_num = algorithm_num_;
+                
+                % if k =1, initialize x_hat and initial P
+                obj.P = P_;
+                obj.Q = Q_;
+                obj.V = V_;
+                obj.R = R_;
+                obj.A = A_;
+                obj.B = B_;
+                obj.C = C_;
+                obj.D = D_;
+                obj.a = a_; % adjacency
+                obj.ns = size(a_,1); %neighbor size
+                obj.rn = robot_num_; % now robot num
+                
+                
+                obj.x_appended = zeros(size(init_,1), []);
+                obj.x_appended(:,1) = init_(:);
+                obj.x_pre = init_;
+                obj.count = 2;
+                
+                obj.nx = size(init_,1);
+                
+                obj.is_init = "ok";
+                
+                if(obj.algorithm_num ~= 1 && obj.algorithm_num ~= 2)
+                    error("Algorithm number can be the number as 1 or 2.");
+                end
+                
+            end
+        end
+        
+        function r = DKFCL_run(obj, u_, y_, z_, x_neighbor)
+            % u_ control input
+            % y_ absolute measurement
+            % z_ relative measurement
+            % x_neighbor neighbor's prior_x size == (nx, ns)
+            obj.y = y_;
+            obj.z = z_;
+            obj.x_neigh = x_neighbor;
+            s = obj.is_init;
+            if strcmp(s,"ok") == 0
+                error("you must init class DKFCL(arg..)");
+            end
+            obj.x_pre(3:4) = u_(1:2);
+            if(obj.algorithm_num == 1)
+                % 2. sample integrated measurements y_{i,k} and z_{i,j,k}
+                % 3. predict target estimates
+                prior_x = obj.A * obj.x_pre;
+                prior_p = obj.A * obj.P * obj.A' + obj.B * obj.Q * obj.B';
+                % 4. send bar{x}_{i,k} to target j,
+                % 5. receive bar{x}_{j,k} and bar{P}_{j,k} from target j,
+                % 6. calculate gain matrices
+                % algorithm 1
+                temp = zeros(2,2);
+                for j = 1:obj.ns
+                    i = obj.rn;
+                    temp = temp +  obj.a(i,j)^2 * obj.R;
+                end
+                K = prior_p * obj.C' * (obj.C * prior_p * obj.C' + obj.V)^-1;
+                L = (prior_p * obj.D' - K * obj.C * prior_p * obj.D') * (obj.D * prior_p * obj.D' + temp)^-1;
+                % 7. update target estimates
+                z_hat = zeros(2, obj.ns);
+                for j = 1:obj.ns
+                    if(obj.a(obj.rn,j) ~= 0)
+                        z_hat(:,j) = obj.D * (prior_x - x_neighbor(:,j));
+                    end
+                end
+                temp = zeros(2,1);
+                for j = 1:obj.ns
+                    i = obj.rn;
+                    temp = temp + obj.a(i,j) * (z_(1:2,j) - z_hat(:,j));
+                end
+                obj.x_appended(:,obj.count) = prior_x + K * (y_ - obj.C * prior_x) + L * temp;
+                obj.x_pre(:) = obj.x_appended(:,obj.count);
+            elseif(obj.algorithm_num == 2)
+                % 2. sample integrated measurements y_{i,k} and z_{i,j,k}
+                % 3. predict target estimates
+                prior_x = obj.A * obj.x_pre;
+                prior_p = obj.A * obj.P * obj.A' + obj.B * obj.Q * obj.B';
+                % 4. send bar{x}_{i,k} to target j,
+                % 5. receive bar{x}_{j,k} and bar{P}_{j,k} from target j,
+                % 6. calculate gain matrices
+                % algorithm 2
+                temp = zeros(2,2);
+                for j = 1:obj.ns
+                    i = obj.rn;
+                    temp = temp +  obj.a(i,j)^2 * obj.R;
+                end
+                L = prior_p * obj.D' * (obj.D * prior_p * obj.D' + temp)^-1;
+                K = (prior_p * obj.C' - L * obj.D * prior_p * obj.C') * (obj.C * prior_p * obj.C' + obj.V)^-1;
+                % 7. update target estimates
+                z_hat = zeros(2, obj.ns);
+                for j = 1:obj.ns
+                    if(obj.a(obj.rn,j) ~= 0)
+                        z_hat(:,j) = obj.D * (prior_x - x_neighbor(:,j));
+                    end
+                end
+                temp = zeros(2,1);
+                for j = 1:obj.ns
+                    i = obj.rn;
+                    temp = temp + obj.a(i,j) * (z_(1:2,j) - z_hat(:,j));
+                end
+                
+                obj.x_appended(:,obj.count) = prior_x + K * (y_ - obj.C * prior_x) + L * temp;
+                obj.x_pre(:) = obj.x_appended(:,obj.count);
+                
+            end            
+            r = obj.x_appended(:,obj.count);
+            obj.count = obj.count + 1;
+        end
+        
+    end
 end
 
 
