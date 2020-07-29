@@ -1,3 +1,11 @@
+% paper: 
+% author: Yeong Jun Kim(colson)
+% email: colson@korea.ac.kr || dud3722000@naver.com
+% date: 2020-07-28
+% Extended Kalman Filter algorithm.
+
+
+
 classdef EKF < handle
    properties 
        

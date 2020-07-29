@@ -52,9 +52,8 @@ classdef DKFCL < handle
             else
                 
                 
-                % Algorithm 1 and 2 are saved in class but $FILTER$_run function
-                % return specific algorithm's output.
-                
+                % Algorithm 1 and 2 are saved in class but $FILTER$_run function return specific algorithm's output.
+                % Choice which algorithm do you want.
                 obj.algorithm_num = algorithm_num_;
                 
                 % if k =1, initialize x_hat and initial P
