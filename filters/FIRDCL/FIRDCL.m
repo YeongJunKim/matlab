@@ -1,10 +1,15 @@
 % paper: 
 % author: Yeong Jun Kim(colson)
 % email: colson@korea.ac.kr || dud3722000@naver.com
-% date: 2020-07-28
-% Distributed Finite Impulse Response Algorithm
+% date: 2020-09-08
+% Finite Impulse Response Filtering Algorithm with Distributed Cooperative
+% Localization
+% i-th input      : u1 u2 u3  ...    u(nh)    u(nh+1)  ... u(nh+nh2)...
+% i-th measurement:    y1 y2 y3  ... y(nh)    y(nh+1)  ... y(nh+nh2)...
+% j-th x_hat                         x_hat(1) x_hat(2) ... x_hat(nh2)...
+% i-th x_hathat                      x_hat(1) x_hat(2) ... x_hat(nh2)...             
 
-classdef DFIR < handle
+classdef FIRDCL < handle
    properties 
        
        % functions
@@ -13,7 +18,6 @@ classdef DFIR < handle
        function_h;
        function_jh; 
        function_r;
-       function_jr; 
        
        % measurement
        z = [];
@@ -25,12 +29,15 @@ classdef DFIR < handle
        
        % horizon size
        h_size;
+       h2_size;
        % x size
        x_size;
        % u size
        u_size;
        % z size
        z_size;
+       % r size
+       r_size;
         
        % system matrix set
        F_array;
@@ -63,55 +70,80 @@ classdef DFIR < handle
    methods
        %% function area
        
-       function obj = DFIR(h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, function_r_, function_jr_, init_state_)
+       function obj = FIRDCL(nh1_, nh2_, nx_, nz_, nr_, nu_, ... % 5
+                                 F_, J_F_, H_, J_H_, R_, ... % 5
+                                init_state_, neighbor_num_)  % 2
            % size mapping
-           obj.h_size = h_size_;
-           obj.x_size = x_size_;
-           obj.u_size = u_size_;
-           obj.z_size = z_size_;
+           obj.h_size = nh1_; % horizon size
+           obj.h2_size = nh2_; % relative measurement horizon size
+           obj.x_size = nx_; % state size
+           obj.u_size = nu_; % input size
+           obj.z_size = nz_; % measurement size
+           obj.r_size = nr_; % relative measurement size
            
            % array init
-           obj.F_array = zeros(x_size_, x_size_, h_size_);
-           obj.H_array = zeros(z_size_, x_size_, h_size_);
-           obj.y_tilde = zeros(z_size_, h_size_);
-           obj.u_tilde = zeros(x_size_, h_size_);
+           obj.F_array = zeros(nx_, nx_, nh1_);
+           obj.H_array = zeros(nz_, nx_, nh1_);
+           obj.y_tilde = zeros(nz_, nh1_);
+           obj.u_tilde = zeros(nx_, nh1_);
            
            % function init
-           obj.function_f = function_f_;
-           obj.function_h = function_h_;
-           obj.function_jf = function_jf_;
-           obj.function_jh = function_jh_;
+           obj.function_f = F_;
+           obj.function_h = H_;
+           obj.function_jf = J_F_;
+           obj.function_jh = J_H_;
+           obj.function_r = R_;
            
            % count init
-           obj.count = 1;
+           obj.count = 2;
            
            % state init
            obj.init_state = init_state_;
            obj.x_pre = init_state_;
            
            % data saving
-           obj.x_appended = zeros(x_size_, 1000);
+           obj.x_appended = zeros(nx_, []);
+           obj.x_appended(:,1) = obj.x_pre;
            
            % init ok
            obj.is_init = "ok";
        end
-              
-       function r = estimate(obj, u_, z_, pj_, alpha_)
+       
+       function r = estimate(obj, u_, z_, r_)
+           if obj.is_init ~= "ok"
+                error("No initialized");
+           end
+           argument_f = num2cell([x_pre' u_']);
+           f_hat = obj.function_f(argument_f{:});
+           argument_h = num2cell([f_hat']);
+           h_hat = obj.function_h(argument_h{:});
+           
+           F = obj.function_jf(argument_f{:});
+           H = obj.function_jh(argument_h{:});
+           
+           % accumulating array
+           obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
+           obj.F_array(:,:,obj.h_size) = F;
+           obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
+           obj.H_array(:,:,obj.h_size) = H;
+           obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+           obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
+           obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
+           obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
+           obj.r_tilde(:,1:obj.h2_size-1) = obj.r_tilde(:,2:obj.h_size);
+           
+           
+       end
+       
+       function r = FIR_run(obj,x_pre_, u_, z_)
            if obj.is_init == "ok"
-%                disp("debug");
-%                disp(obj.x_pre);
-
-               argument_f = num2cell([obj.x_pre' u_']);
+               argument_f = num2cell([x_pre_' u_']);
                f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' pj_']);
+               argument_h = num2cell([f_hat']);
                h_hat = obj.function_h(argument_h{:});
-               % There is a matlab problem with [-Pi, Pi], so need to be
-               % convert radian value go to [0, 2Pi].
-               h_hat(3:4) = wrapTo2Pi(h_hat(3:4));
                
                F =  obj.function_jf(argument_f{:});
                H =  obj.function_jh(argument_h{:});
-               z = (1 - alpha_) * h_hat + alpha_ * z_;
                
                % accumulating array
                obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
@@ -119,23 +151,22 @@ classdef DFIR < handle
                obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
                obj.H_array(:,:,obj.h_size) = H;
                obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
-               obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
+               obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
                obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-               obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
-              
+               obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
+               
                % calculate x_hat
                if obj.count > obj.h_size
                     r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
                else
-                   r = f_hat;
+                   r = obj.f_hat;
                end
-               obj.x_pre = r;
                obj.x_appended(:,obj.count) = r;
                obj.count = obj.count + 1;
            else
-               error("you must init class    : Call (filtering_init(obj, ...)");
+               error("No initialized");
            end
-       end
+       end       
    end
 end
 
