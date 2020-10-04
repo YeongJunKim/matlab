@@ -50,6 +50,9 @@ classdef DFIR < handle
        % u_
        u_;
        
+       % neighbors
+       nn;
+       
        % counting
        count = 0;
        
@@ -63,7 +66,11 @@ classdef DFIR < handle
    methods
        %% function area
        
-       function obj = DFIR(h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, function_r_, function_jr_, init_state_)
+       % arguments
+       % h_size_, x_size_, z_size, u_size_: size info.
+       % function*: function of dynamics, measurement, relative measurement
+       % nn: neighbor number
+       function obj = DFIR(h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, function_r_, function_jr_, init_state_, nn_)
            % size mapping
            obj.h_size = h_size_;
            obj.x_size = x_size_;
@@ -90,12 +97,53 @@ classdef DFIR < handle
            obj.x_pre = init_state_;
            
            % data saving
-           obj.x_appended = zeros(x_size_, 1000);
+           obj.x_appended = zeros(x_size_, []);
            
            % init ok
            obj.is_init = "ok";
        end
-              
+       
+       
+       % This function for the relative measurement 
+       % u_ -> conrol input
+       % pj_ -> row vector consist of neighbor's x and y, augmented.
+       % z_ -> relative measurement, [x_(j=1), y_(j=1), x_(j=2),
+       % y_(j=2),...x_(j=N_i), y_(j=N_i), theta]'
+       
+       function r = estimate2(obj, u_, pj_, z_)
+           if strcmp(obj.is_init, "ok") == 0
+               error("you must init class    : Call (filtering_init(obj, ...)");
+           end
+           argument_f = num2cell([obj.x_pre' u_']);
+           f_hat = obj.function_f(argument_f{:});
+           argument_h = num2cell([f_hat' pj_']);
+           h_hat = obj.function_h(argument_h{:});
+%            h_hat(4:7) = wrapTo2Pi(h_hat(4:7));
+           
+           F =  obj.function_jf(argument_f{:});
+           H =  obj.function_jh(argument_h{:});
+           
+           % accumulating array
+           obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
+           obj.F_array(:,:,obj.h_size) = F;
+           obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
+           obj.H_array(:,:,obj.h_size) = H;
+           obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+           obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
+           obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
+           obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
+           
+           % calculate x_hat
+           if obj.count > obj.h_size
+               r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
+           else
+               r = f_hat;
+           end
+           obj.x_pre = r;
+           obj.x_appended(:,obj.count) = r;
+           obj.count = obj.count + 1;
+       end
+       
        function r = estimate(obj, u_, z_, pj_, alpha_)
            if obj.is_init == "ok"
 %                disp("debug");
