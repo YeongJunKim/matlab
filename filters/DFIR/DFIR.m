@@ -59,9 +59,10 @@ classdef DFIR < handle
        is_init = "no";
        
        % data saving
-       
        x_appended;
-       
+       % square error
+       x_se;
+       x_rmse;
    end
    methods
        %% function area

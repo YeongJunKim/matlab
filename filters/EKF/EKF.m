@@ -25,7 +25,9 @@ classdef EKF < handle
         count = 1;
         x_appended;
         x_pre;
-        
+        % estimation error
+        x_se;
+        x_rmse;
         is_init = "no";
         first_run = 0;
     end
