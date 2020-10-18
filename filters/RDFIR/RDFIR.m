@@ -2,16 +2,20 @@
 % author: Yeong Jun Kim(colson)
 % email: colson@korea.ac.kr || dud3722000@naver.com
 % date: 2020-07-28
-% Finite Impulse Response Algorithm
+% Distributed Finite Impulse Response Algorithm
 
-classdef FIR < handle
+classdef RDFIR < handle
    properties 
        
        % functions
        function_f;
        function_jf;
-       function_h;
-       function_jh; 
+       function_h1;
+       function_h2;
+       function_h3;
+       function_jh1; 
+       function_jh2; 
+       function_jh3; 
        
        % measurement
        z = [];
@@ -38,8 +42,7 @@ classdef FIR < handle
        y_tilde;
        % control input set
        u_tilde;
-       
-       
+              
        % init state
        init_state;
        
@@ -48,52 +51,29 @@ classdef FIR < handle
        % u_
        u_;
        
+       % neighbors num
+       nn;
+       
        % counting
-       count = 0;
+       count = 1;
        
        is_init = "no";
        
        % data saving
-       
        x_appended;
-       
+       % square error
+       x_se;
+       % root mean square error
+       x_rmse;
    end
    methods
        %% function area
-       function obj = FIR(h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_)
-                      % size mappinfg
-           obj.h_size = h_size_;
-           obj.x_size = x_size_;
-           obj.u_size = u_size_;
-           obj.z_size = z_size_;
-           
-           % array init
-           obj.F_array = zeros(x_size_, x_size_, h_size_);
-           obj.H_array = zeros(z_size_, x_size_, h_size_);
-           obj.y_tilde = zeros(z_size_, h_size_);
-           obj.u_tilde = zeros(x_size_, h_size_);
-           
-           % function init
-           obj.function_f = function_f_;
-           obj.function_h = function_h_;
-           obj.function_jf = function_jf_;
-           obj.function_jh = function_jh_;
-           
-           % count init
-           obj.count = 1;
-           
-           % state init
-           obj.init_state = init_state_;
-           obj.x_pre = init_state_;
-           
-           % data saving
-           obj.x_appended = zeros(x_size_, 1000);
-           
-           % init ok
-           obj.is_init = "ok";
-           r = obj.is_init;
-       end
-       function r = FIR_init(obj, h_size_, x_size_, z_size_, u_size_, function_f_, function_jf_, function_h_, function_jh_, init_state_)
+       
+       % arguments
+       % h_size_, x_size_, z_size, u_size_: size info.
+       % function*: function of dynamics, measurement, relative measurement
+       % nn: neighbor number
+       function obj = RDFIR(h_size_, x_size_, u_size_, z_size_, function_f_, function_jf_, function_h1_, function_h2_, function_h3_, function_jh1_,function_jh2_,function_jh3_, init_state_, nn_)
            % size mapping
            obj.h_size = h_size_;
            obj.x_size = x_size_;
@@ -108,9 +88,16 @@ classdef FIR < handle
            
            % function init
            obj.function_f = function_f_;
-           obj.function_h = function_h_;
            obj.function_jf = function_jf_;
-           obj.function_jh = function_jh_;
+           obj.function_h1 = function_h1_;
+           obj.function_h2 = function_h2_;
+           obj.function_h3 = function_h3_;
+           obj.function_jh1 = function_jh1_;
+           obj.function_jh2 = function_jh2_;
+           obj.function_jh3 = function_jh3_;
+           
+           %neighbor num
+           obj.nn = nn_;
            
            % count init
            obj.count = 1;
@@ -120,47 +107,66 @@ classdef FIR < handle
            obj.x_pre = init_state_;
            
            % data saving
-           obj.x_appended = zeros(x_size_, 1000);
+           obj.x_appended = zeros(x_size_, []);
            
            % init ok
            obj.is_init = "ok";
-           r = obj.is_init;
        end
        
-       function r = FIR_run(obj,x_pre_, u_, z_)
-           if obj.is_init == "ok"
-               argument_f = num2cell([x_pre_' u_']);
-               f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat']);
-               h_hat = obj.function_h(argument_h{:});
-               
-               F =  obj.function_jf(argument_f{:});
-               H =  obj.function_jh(argument_h{:});
-               
-               % accumulating array
-               obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
-               obj.F_array(:,:,obj.h_size) = F;
-               obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
-               obj.H_array(:,:,obj.h_size) = H;
-               obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
-               obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
-               obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-               obj.u_tilde(:,obj.h_size) = f_hat - F * x_pre_;
-               
-               % calculate x_hat
-               if obj.count > obj.h_size
-                    r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
-               else
-                   r = obj.f_hat;
-               end
-               obj.x_appended(:,obj.count) = r;
-               obj.count = obj.count + 1;
-           else
+       
+       % This function for the relative measurement 
+       % u_ -> conrol input
+       % pj_ -> row vector consist of neighbor's x and y, augmented.
+       % z_ -> relative measurement, [x_(j=1), y_(j=1), x_(j=2),
+       % y_(j=2),...x_(j=N_i), y_(j=N_i), theta]'
+       
+       function r = estimate2(obj,i_, u_, z_, adj_, pj_)
+           if strcmp(obj.is_init, "ok") == 0
                error("you must init class    : Call (filtering_init(obj, ...)");
            end
+           argument_f = num2cell([obj.x_pre' u_']);
+           f_hat = obj.function_f(argument_f{:});
+           F =  obj.function_jf(argument_f{:});
+           
+           % make h_hat & H (jacobian)
+           find_neighbors = find(adj_(:,i_)==1);
+           h_hat = zeros(2*obj.nn + 1,1);
+           H = zeros(obj.nn*2+1, obj.x_size);
+           for i = 1:obj.nn
+              argument_h = num2cell([f_hat' pj_(1:2,find_neighbors(i))']);
+              h_hat(i,1) = obj.function_h1(argument_h{:});
+              H(i,:) = obj.function_jh1(argument_h{:});
+              h_hat(obj.nn+i,1) = obj.function_h2(argument_h{:});
+              h_hat(obj.nn+i,1) = wrapTo2Pi(h_hat(obj.nn+i,1));
+              H(obj.nn+i,:) = obj.function_jh2(argument_h{:});
+           end
+           argument_h = num2cell([f_hat' [0 0]]);
+           h_hat(2*obj.nn + 1,1) = obj.function_h3(argument_h{:});
+           h_hat(2*obj.nn + 1,1) = wrapTo2Pi(h_hat(2*obj.nn + 1,1));
+           H(2*obj.nn + 1,:) = obj.function_jh3(argument_h{:});
+           
+           % accumulating array
+           obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
+           obj.F_array(:,:,obj.h_size) = F;
+           obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
+           obj.H_array(:,:,obj.h_size) = H;
+           obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
+           obj.y_tilde(:,obj.h_size) = z_ - (h_hat - H * f_hat);
+           obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
+           obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
+           
+           % calculate x_hat
+           if obj.count > obj.h_size
+               r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
+           else
+               r = f_hat;
+           end
+           obj.x_pre = r;
+           obj.x_appended(:,obj.count) = r;
+           obj.count = obj.count + 1;
        end
        
-       function r = FIR_DFIR_run(obj, u_, z_, pj_, alpha_)
+       function r = estimate(obj, u_, z_, pj_, alpha_)
            if obj.is_init == "ok"
 %                disp("debug");
 %                disp(obj.x_pre);
@@ -200,53 +206,6 @@ classdef FIR < handle
                error("you must init class    : Call (filtering_init(obj, ...)");
            end
        end
-       % rename FIR_REDEFINE_run(obj, u_, z_, alpha_)
-       function r = FIR_PEFFME_run(obj, x_pre_, u_, z_, alpha_)
-           if obj.is_init == "ok"
-%                disp("debug");
-%                disp(obj.x_pre);
-               argument_f = num2cell([obj.x_pre' u_']);
-               f_hat = obj.function_f(argument_f{:});
-               argument_h = num2cell([f_hat' u_']);
-               h_hat = obj.function_h(argument_h{:});
-               
-               F =  obj.function_jf(argument_f{:});
-               H =  obj.function_jh(argument_h{:});
-               z = (1 - alpha_) * h_hat + alpha_ * z_;
-               
-               % accumulating array
-%                  disp("1");
-               obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
-%                  disp("2");
-               obj.F_array(:,:,obj.h_size) = F;
-%                  disp("3");
-               obj.H_array(:,:,1:obj.h_size-1) = obj.H_array(:,:,2:obj.h_size);
-%                  disp("4");
-               obj.H_array(:,:,obj.h_size) = H;
-%                  disp("5");
-               obj.y_tilde(:,1:obj.h_size-1) = obj.y_tilde(:,2:obj.h_size);
-%                  disp("6");
-               obj.y_tilde(:,obj.h_size) = z - (h_hat - H * f_hat);
-%                  disp("7");
-               obj.u_tilde(:,1:obj.h_size-1) = obj.u_tilde(:,2:obj.h_size);
-%                  disp("8");
-               obj.u_tilde(:,obj.h_size) = f_hat - F * obj.x_pre;
-%                  disp("9");
-              
-               % calculate x_hat
-               if obj.count > obj.h_size
-                    r = FIR_main(obj.F_array,obj.H_array,obj.y_tilde,obj.u_tilde,obj.h_size);
-               else
-                   r = f_hat;
-               end
-               obj.x_pre = r;
-               obj.x_appended(:,obj.count) = r;
-               obj.count = obj.count + 1;
-           else
-               error("you must init class    : Call (filtering_init(obj, ...)");
-           end
-       end
-       
    end
 end
 
