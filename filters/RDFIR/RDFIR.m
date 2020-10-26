@@ -126,6 +126,7 @@ classdef RDFIR < handle
            end
            argument_f = num2cell([obj.x_pre' u_']);
            f_hat = obj.function_f(argument_f{:});
+%            f_hat(3) = wrapTo2Pi(f_hat(3));
            F =  obj.function_jf(argument_f{:});
            
            % make h_hat & H (jacobian)
@@ -137,12 +138,10 @@ classdef RDFIR < handle
               h_hat(i,1) = obj.function_h1(argument_h{:});
               H(i,:) = obj.function_jh1(argument_h{:});
               h_hat(obj.nn+i,1) = obj.function_h2(argument_h{:});
-              h_hat(obj.nn+i,1) = wrapTo2Pi(h_hat(obj.nn+i,1));
               H(obj.nn+i,:) = obj.function_jh2(argument_h{:});
            end
            argument_h = num2cell([f_hat' [0 0]]);
            h_hat(2*obj.nn + 1,1) = obj.function_h3(argument_h{:});
-           h_hat(2*obj.nn + 1,1) = wrapTo2Pi(h_hat(2*obj.nn + 1,1));
            H(2*obj.nn + 1,:) = obj.function_jh3(argument_h{:});
            
            % accumulating array
