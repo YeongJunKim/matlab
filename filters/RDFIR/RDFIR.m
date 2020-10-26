@@ -138,11 +138,20 @@ classdef RDFIR < handle
               h_hat(i,1) = obj.function_h1(argument_h{:});
               H(i,:) = obj.function_jh1(argument_h{:});
               h_hat(obj.nn+i,1) = obj.function_h2(argument_h{:});
+<<<<<<< HEAD
               H(obj.nn+i,:) = obj.function_jh2(argument_h{:});
            end
            argument_h = num2cell([f_hat' [0 0]]);
            h_hat(2*obj.nn + 1,1) = obj.function_h3(argument_h{:});
            H(2*obj.nn + 1,:) = obj.function_jh3(argument_h{:});
+=======
+%               h_hat(obj.nn+i,1) = wrapTo2Pi(h_hat(obj.nn+i,1));
+              H(obj.nn+i,:) = obj.function_jh2(argument_h{:});
+           end
+           argument_h               = num2cell([f_hat' [0 0]]);
+           h_hat(2*obj.nn + 1,1)    = obj.function_h3(argument_h{:});
+           H(2*obj.nn + 1,:)        = obj.function_jh3(argument_h{:});
+>>>>>>> 353eb2ec718eab9a6ce4e953aeb9b8a1520333be
            
            % accumulating array
            obj.F_array(:,:,1:obj.h_size - 1) = obj.F_array(:,:,2:obj.h_size);
