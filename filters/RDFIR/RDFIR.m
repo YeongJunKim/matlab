@@ -108,7 +108,7 @@ classdef RDFIR < handle
            
            % data saving
            obj.x_appended = zeros(x_size_, []);
-           
+           obj.x_appended(:,1) = init_state_;
            % init ok
            obj.is_init = "ok";
        end
